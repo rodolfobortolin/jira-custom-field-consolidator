@@ -4,6 +4,10 @@
   "description": "Consolidate two custom fields by transferring all configurations and values",
   "main": "index.js",
   "scripts": {
+    "build": "cd static/main && npm run build",
+    "deploy": "forge deploy",
+    "deploy:dev": "npm run build && forge deploy",
+    "deploy:prod": "npm run build && forge deploy --environment=production",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",

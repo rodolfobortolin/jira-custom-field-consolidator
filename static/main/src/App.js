@@ -238,8 +238,15 @@ const styles = {
     borderRadius: '3px',
     backgroundColor: '#F4F5F7'
   },
+  analysisSectionTitle: {
+    fontSize: '18px',
+    fontWeight: '600',
+    marginBottom: '12px',
+    padding: '8px 0',
+    borderBottom: '2px solid #0052CC'
+  },
   analysisSection: {
-    marginBottom: '16px'
+    marginBottom: '24px'
   },
   analysisHeader: {
     fontSize: '16px',
@@ -439,6 +446,65 @@ function App() {
   const [showTargetScreens, setShowTargetScreens] = useState(false);
   const [showSourceProjects, setShowSourceProjects] = useState(false);
   const [showTargetProjects, setShowTargetProjects] = useState(false);
+  
+  // Check if the field is compatible for conversion
+  const isFieldCompatible = (sourceField, targetField) => {
+    if (!sourceField || !targetField) return true;
+    
+    const sourceData = customFields.find(f => f.id === sourceField);
+    const targetData = customFields.find(f => f.id === targetField);
+    
+    if (!sourceData || !targetData) return true;
+    
+    const sourceType = sourceData.type;
+    const targetType = targetData.type;
+    const sourceCustomType = sourceData.customType;
+    const targetCustomType = targetData.customType;
+    
+    // Text to select is never compatible (critical rule)
+    const isSourceText = sourceType === 'string' || sourceType === 'text';
+    const isTargetSelect = 
+      targetCustomType === 'com.atlassian.jira.plugin.system.customfieldtypes:select' ||
+      targetCustomType === 'com.atlassian.jira.plugin.system.customfieldtypes:multiselect';
+    
+    if (isSourceText && isTargetSelect) {
+      return false;
+    }
+    
+    // These are some additional conversion compatibility rules based on our defined rules:
+    
+    // Any field can be converted to text fields (regular or multi-line)
+    if (targetType === 'string' || targetType === 'text' || 
+        targetCustomType === 'com.atlassian.jira.plugin.system.customfieldtypes:textarea') {
+      return true;
+    }
+    
+    // Date and time can be converted to date fields
+    if (sourceCustomType === 'com.atlassian.jira.plugin.system.customfieldtypes:datetime' &&
+        targetCustomType === 'com.atlassian.jira.plugin.system.customfieldtypes:datepicker') {
+      return true;
+    }
+    
+    // Select can be converted to radio buttons
+    if (sourceCustomType === 'com.atlassian.jira.plugin.system.customfieldtypes:select' &&
+        targetCustomType === 'com.atlassian.jira.plugin.system.customfieldtypes:radiobuttons') {
+      return true;
+    }
+    
+    // Single user can be converted to multi-user
+    if (sourceCustomType === 'com.atlassian.jira.plugin.system.customfieldtypes:userpicker' &&
+        targetCustomType === 'com.atlassian.jira.plugin.system.customfieldtypes:multiuserpicker') {
+      return true;
+    }
+    
+    // If fields are of same type, they're definitely compatible
+    if (sourceType === targetType && sourceCustomType === targetCustomType) {
+      return true;
+    }
+    
+    // All other conversions are generally allowed
+    return true;
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -499,13 +565,14 @@ function App() {
     }
   }, [migration]);
 
-  const fetchFieldDetails = async () => {
+  const fetchFieldDetails = async (fieldId = null) => {
     try {
       setError(null);
-      console.log('Fetching field details for:', sourceField);
+      const sourceFieldIdToUse = fieldId || sourceField;
+      console.log('Fetching field details for:', sourceFieldIdToUse);
       
       const details = await invoke('getFieldConfigurations', { 
-        sourceFieldId: sourceField 
+        sourceFieldId: sourceFieldIdToUse 
       });
       
       console.log('Field details received:', details);
@@ -633,11 +700,17 @@ function App() {
     const fieldId = e.target.value;
     if (fieldId) {
       setSourceField(fieldId);
-      if (fieldId === targetField) {
-        setTargetField(null);
-      }
+      
+      // When source field changes, we should reset target field to ensure compatibility
+      setTargetField(null);
+      setValidationResults(null);
+      setAnalysisResults(null);
+      
+      // Fetch the field configuration details
+      fetchFieldDetails(fieldId);
     } else {
       setSourceField(null);
+      setConfigDetails(null);
     }
   };
 
@@ -828,6 +901,16 @@ function App() {
 
       {activeTab === 0 && (
         <div style={styles.tabPanel}>
+          <div style={{marginBottom: '20px', padding: '16px', backgroundColor: '#DEEBFF', borderRadius: '3px'}}>
+            <h3 style={{margin: '0 0 10px 0'}}>How to Use:</h3>
+            <ol style={{margin: '0', paddingLeft: '20px'}}>
+              <li style={{marginBottom: '8px'}}>Select a <strong>Source Field</strong> (the field you want to migrate values from)</li>
+              <li style={{marginBottom: '8px'}}>Select a <strong>Target Field</strong> (only compatible fields are shown)</li>
+              <li style={{marginBottom: '8px'}}>Click <strong>Analyze</strong> to see detailed information about both fields</li>
+              <li style={{marginBottom: '0px'}}>Click <strong>Start Consolidation</strong> to begin the migration process</li>
+            </ol>
+          </div>
+
           <ConversionRulesCard />
 
           <div style={styles.selectWrapper}>
@@ -860,9 +943,12 @@ function App() {
               value={targetField || ''}
               disabled={!sourceField}
             >
-              <option value="">Select target field...</option>
+              <option value="">Select target field (showing compatible fields only)...</option>
+              {sourceField && customFields.filter(field => field.id !== sourceField && isFieldCompatible(sourceField, field.id)).length === 0 && (
+                <option value="" disabled>No compatible fields available</option>
+              )}
               {customFields
-                .filter(field => field.id !== sourceField)
+                .filter(field => field.id !== sourceField && isFieldCompatible(sourceField, field.id))
                 .map(field => (
                   <option key={field.id} value={field.id}>
                     {field.name} ({getFieldTypeDisplay(field.id)})
@@ -970,15 +1056,14 @@ function App() {
             </div>
           )}
 
-          <div style={styles.buttonContainer}>
+          <div style={{...styles.buttonContainer, marginBottom: '20px', marginTop: '20px'}}>
             <button 
-              style={
-                !sourceField || 
-                !targetField ||
-                isAnalyzing
-                  ? styles.disabledButton 
-                  : styles.button
-              }
+              style={{
+                ...(!sourceField || !targetField || isAnalyzing ? styles.disabledButton : styles.button),
+                padding: '10px 24px',
+                fontSize: '16px',
+                backgroundColor: !sourceField || !targetField || isAnalyzing ? '#dfe1e6' : '#00875A'
+              }}
               onClick={analyzeFields}
               disabled={
                 !sourceField || 
@@ -986,20 +1071,33 @@ function App() {
                 isAnalyzing
               }
             >
-              {isAnalyzing ? 'Analyzing...' : 'Analyze Fields'}
+              {isAnalyzing ? 'Analyzing...' : 'Analyze'}
             </button>
             
             <button 
-              style={
-                !sourceField || 
-                !targetField || 
-                isProcessing || 
-                !analysisResults ||
-                (migration && migration.status === 'IN_PROGRESS') ||
-                (validationResults && !validationResults.valid)
-                  ? styles.disabledButton 
-                  : styles.button
-              }
+              style={{
+                ...(
+                  !sourceField || 
+                  !targetField || 
+                  isProcessing || 
+                  !analysisResults ||
+                  (migration && migration.status === 'IN_PROGRESS') ||
+                  (validationResults && !validationResults.valid)
+                    ? styles.disabledButton 
+                    : styles.button
+                ),
+                padding: '10px 24px',
+                fontSize: '16px',
+                marginLeft: '16px',
+                backgroundColor: (
+                  !sourceField || 
+                  !targetField || 
+                  isProcessing || 
+                  !analysisResults ||
+                  (migration && migration.status === 'IN_PROGRESS') ||
+                  (validationResults && !validationResults.valid)
+                ) ? '#dfe1e6' : '#0052CC'
+              }}
               onClick={startConsolidation}
               disabled={
                 !sourceField || 
@@ -1022,30 +1120,21 @@ function App() {
           
           {analysisResults && (
             <div style={styles.analysisSummary}>
-              <h3 style={{margin: '0 0 16px 0'}}>Fields Analysis</h3>
+              <h3 style={{margin: '0 0 16px 0', fontSize: '20px', textAlign: 'center'}}>Fields Analysis Results</h3>
               
-              {/* Source Field Analysis */}
-              <div style={styles.analysisSection}>
-                <h4 style={styles.analysisHeader}>Source Field: {analysisResults.sourceField.name}</h4>
-                
-                <div style={styles.analysisStat}>
-                  <div style={styles.analysisLabel}>Type:</div>
-                  <div style={styles.analysisValue}>
-                    {getFieldTypeDisplay(analysisResults.sourceField.id)}
+              <div style={{display: 'flex', justifyContent: 'space-between', gap: '16px', marginBottom: '20px'}}>
+                <div style={{width: '100%', padding: '12px', backgroundColor: '#FFFFFF', borderRadius: '3px', border: '1px solid #DFE1E6'}}>
+                  <div style={{fontSize: '16px', fontWeight: '500', marginBottom: '8px', textAlign: 'center', padding: '8px', backgroundColor: '#DEEBFF', borderRadius: '3px'}}>
+                    Source Field: {analysisResults.sourceField.name}
                   </div>
-                </div>
-                
-                <div style={styles.analysisStat}>
-                  <div style={styles.analysisLabel}>Values count:</div>
-                  <div style={styles.analysisValue}>
-                    {analysisResults.sourceField.valueCount.toLocaleString()} issues have values
+                  <div style={{marginBottom: '12px', fontWeight: '600'}}>
+                    Type: {getFieldTypeDisplay(analysisResults.sourceField.id)}
                   </div>
-                </div>
-                
-                <div style={styles.analysisStat}>
-                  <div style={styles.analysisLabel}>Screens:</div>
-                  <div style={styles.analysisValue}>
-                    {analysisResults.sourceField.screenCount} screens
+                  <div style={{marginBottom: '12px', fontWeight: '600', color: '#0052CC'}}>
+                    Issues: {analysisResults.sourceField.valueCount.toLocaleString()}
+                  </div>
+                  <div style={{marginBottom: '12px', fontWeight: '600', color: '#0052CC'}}>
+                    Screens: {analysisResults.sourceField.screenCount}
                     <button 
                       style={styles.toggleButton}
                       onClick={() => setShowSourceScreens(!showSourceScreens)}
@@ -1053,30 +1142,23 @@ function App() {
                       {showSourceScreens ? 'Hide' : 'Show'}
                     </button>
                   </div>
-                </div>
-                
-                {showSourceScreens && analysisResults.sourceField.screens.length > 0 && (
-                  <div style={styles.screenList}>
-                    {analysisResults.sourceField.screens.map(screen => (
-                      <div key={screen.id} style={styles.screenItem}>
-                        {screen.name}
-                      </div>
-                    ))}
+                  
+                  {showSourceScreens && analysisResults.sourceField.screens.length > 0 && (
+                    <div style={styles.screenList}>
+                      {analysisResults.sourceField.screens.map(screen => (
+                        <div key={screen.id} style={styles.screenItem}>
+                          {screen.name}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  
+                  <div style={{marginBottom: '12px', fontWeight: '600', color: '#0052CC'}}>
+                    Contexts: {analysisResults.sourceField.contextCount}
                   </div>
-                )}
-                
-                <div style={styles.analysisStat}>
-                  <div style={styles.analysisLabel}>Contexts:</div>
-                  <div style={styles.analysisValue}>
-                    {analysisResults.sourceField.contextCount} contexts
-                  </div>
-                </div>
-                
-                <div style={styles.analysisStat}>
-                  <div style={styles.analysisLabel}>Projects:</div>
-                  <div style={styles.analysisValue}>
-                    {analysisResults.sourceField.projectCount} projects with data
-                    {analysisResults.sourceField.hasMoreProjects && ' (showing top 100)'}
+                  
+                  <div style={{marginBottom: '12px', fontWeight: '600'}}>
+                    Projects: {analysisResults.sourceField.projectCount}
                     <button 
                       style={styles.toggleButton}
                       onClick={() => setShowSourceProjects(!showSourceProjects)}
@@ -1084,42 +1166,31 @@ function App() {
                       {showSourceProjects ? 'Hide' : 'Show'}
                     </button>
                   </div>
+                  
+                  {showSourceProjects && analysisResults.sourceField.projects.length > 0 && (
+                    <div style={styles.projectList}>
+                      {analysisResults.sourceField.projects.map(project => (
+                        <div key={project.id} style={styles.projectItem}>
+                          <span>{project.name} ({project.key})</span>
+                          <span>{project.count} issues</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 
-                {showSourceProjects && analysisResults.sourceField.projects.length > 0 && (
-                  <div style={styles.projectList}>
-                    {analysisResults.sourceField.projects.map(project => (
-                      <div key={project.id} style={styles.projectItem}>
-                        <span>{project.name} ({project.key})</span>
-                        <span>{project.count} issues</span>
-                      </div>
-                    ))}
+                <div style={{width: '100%', padding: '12px', backgroundColor: '#FFFFFF', borderRadius: '3px', border: '1px solid #DFE1E6'}}>
+                  <div style={{fontSize: '16px', fontWeight: '500', marginBottom: '8px', textAlign: 'center', padding: '8px', backgroundColor: '#E3FCEF', borderRadius: '3px'}}>
+                    Target Field: {analysisResults.targetField.name}
                   </div>
-                )}
-              </div>
-              
-              {/* Target Field Analysis */}
-              <div style={styles.analysisSection}>
-                <h4 style={styles.analysisHeader}>Target Field: {analysisResults.targetField.name}</h4>
-                
-                <div style={styles.analysisStat}>
-                  <div style={styles.analysisLabel}>Type:</div>
-                  <div style={styles.analysisValue}>
-                    {getFieldTypeDisplay(analysisResults.targetField.id)}
+                  <div style={{marginBottom: '12px', fontWeight: '600'}}>
+                    Type: {getFieldTypeDisplay(analysisResults.targetField.id)}
                   </div>
-                </div>
-                
-                <div style={styles.analysisStat}>
-                  <div style={styles.analysisLabel}>Values count:</div>
-                  <div style={styles.analysisValue}>
-                    {analysisResults.targetField.valueCount.toLocaleString()} issues have values
+                  <div style={{marginBottom: '12px', fontWeight: '600', color: '#0052CC'}}>
+                    Issues: {analysisResults.targetField.valueCount.toLocaleString()}
                   </div>
-                </div>
-                
-                <div style={styles.analysisStat}>
-                  <div style={styles.analysisLabel}>Screens:</div>
-                  <div style={styles.analysisValue}>
-                    {analysisResults.targetField.screenCount} screens
+                  <div style={{marginBottom: '12px', fontWeight: '600', color: '#0052CC'}}>
+                    Screens: {analysisResults.targetField.screenCount}
                     <button 
                       style={styles.toggleButton}
                       onClick={() => setShowTargetScreens(!showTargetScreens)}
@@ -1127,30 +1198,23 @@ function App() {
                       {showTargetScreens ? 'Hide' : 'Show'}
                     </button>
                   </div>
-                </div>
-                
-                {showTargetScreens && analysisResults.targetField.screens.length > 0 && (
-                  <div style={styles.screenList}>
-                    {analysisResults.targetField.screens.map(screen => (
-                      <div key={screen.id} style={styles.screenItem}>
-                        {screen.name}
-                      </div>
-                    ))}
+                  
+                  {showTargetScreens && analysisResults.targetField.screens.length > 0 && (
+                    <div style={styles.screenList}>
+                      {analysisResults.targetField.screens.map(screen => (
+                        <div key={screen.id} style={styles.screenItem}>
+                          {screen.name}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  
+                  <div style={{marginBottom: '12px', fontWeight: '600', color: '#0052CC'}}>
+                    Contexts: {analysisResults.targetField.contextCount}
                   </div>
-                )}
-                
-                <div style={styles.analysisStat}>
-                  <div style={styles.analysisLabel}>Contexts:</div>
-                  <div style={styles.analysisValue}>
-                    {analysisResults.targetField.contextCount} contexts
-                  </div>
-                </div>
-                
-                <div style={styles.analysisStat}>
-                  <div style={styles.analysisLabel}>Projects:</div>
-                  <div style={styles.analysisValue}>
-                    {analysisResults.targetField.projectCount} projects with data
-                    {analysisResults.targetField.hasMoreProjects && ' (showing top 100)'}
+                  
+                  <div style={{marginBottom: '12px', fontWeight: '600'}}>
+                    Projects: {analysisResults.targetField.projectCount}
                     <button 
                       style={styles.toggleButton}
                       onClick={() => setShowTargetProjects(!showTargetProjects)}
@@ -1158,28 +1222,30 @@ function App() {
                       {showTargetProjects ? 'Hide' : 'Show'}
                     </button>
                   </div>
+                  
+                  {showTargetProjects && analysisResults.targetField.projects.length > 0 && (
+                    <div style={styles.projectList}>
+                      {analysisResults.targetField.projects.map(project => (
+                        <div key={project.id} style={styles.projectItem}>
+                          <span>{project.name} ({project.key})</span>
+                          <span>{project.count} issues</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                
-                {showTargetProjects && analysisResults.targetField.projects.length > 0 && (
-                  <div style={styles.projectList}>
-                    {analysisResults.targetField.projects.map(project => (
-                      <div key={project.id} style={styles.projectItem}>
-                        <span>{project.name} ({project.key})</span>
-                        <span>{project.count} issues</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
               
               {/* Compatibility Summary */}
-              <div style={styles.analysisSection}>
-                <h4 style={styles.analysisHeader}>Compatibility</h4>
+              <div style={{padding: '12px', backgroundColor: '#FFFFFF', borderRadius: '3px', border: '1px solid #DFE1E6'}}>
+                <div style={{fontSize: '16px', fontWeight: '500', marginBottom: '12px', textAlign: 'center', padding: '8px', backgroundColor: validationResults && validationResults.valid ? '#E3FCEF' : '#FFEBE6', borderRadius: '3px'}}>
+                  Compatibility Analysis
+                </div>
                 <div style={validationResults && validationResults.valid ? styles.validConversionItem : styles.invalidConversionItem}>
                   <span style={styles.dashIcon}>
                     {validationResults && validationResults.valid ? '✓' : '✗'}
                   </span>
-                  <span>
+                  <span style={{fontWeight: '600'}}>
                     {validationResults && validationResults.valid 
                       ? 'Fields are compatible for conversion' 
                       : 'Fields are not compatible for conversion'}
