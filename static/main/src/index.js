@@ -1,11 +1,11 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
-import SimplifiedApp from './SimplifiedApp';
+import App from './App';
 
-// Começamos com um aplicativo simplificado para diagnósticos
+// Usando a versão mínima que definitivamente não terá problemas de CSP
 ReactDOM.render(
   <React.StrictMode>
-    <SimplifiedApp />
+    <App />
   </React.StrictMode>,
   document.getElementById('root')
 );

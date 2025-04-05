@@ -9,51 +9,9 @@
       content="Jira Custom Field Consolidator - Transfer configurations and values between custom fields"
     />
     <title>Jira Custom Field Consolidator</title>
-    <!-- Simple inline styles for better CSP compatibility -->
-    <style>
-      body {
-        margin: 0;
-        padding: 0;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-      }
-      .error-boundary {
-        background-color: #FFEBE6;
-        border: 1px solid #DE350B;
-        border-radius: 3px;
-        padding: 16px;
-        margin: 16px;
-        color: #42526E;
-      }
-      .error-boundary h2 {
-        color: #DE350B;
-        margin-top: 0;
-      }
-    </style>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
-    <!-- Simple error boundary to catch React errors and display them -->
-    <script>
-      window.onerror = function(message, source, lineno, colno, error) {
-        console.error('Global error caught:', message, error);
-        
-        // Only create error display if the root is empty (app didn't render)
-        const rootElement = document.getElementById('root');
-        if (rootElement && rootElement.childNodes.length === 0) {
-          const errorElement = document.createElement('div');
-          errorElement.className = 'error-boundary';
-          errorElement.innerHTML = `
-            <h2>Application Error</h2>
-            <p>Something went wrong while loading the application:</p>
-            <pre>${message}</pre>
-            <p>See browser console for more details.</p>
-          `;
-          rootElement.appendChild(errorElement);
-        }
-        
-        return false; // Let default error handling continue
-      };
-    </script>
   </body>
 </html>
