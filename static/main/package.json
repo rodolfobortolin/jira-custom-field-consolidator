@@ -9,26 +9,10 @@
     "eject": "react-scripts eject"
   },
   "dependencies": {
-    "@atlaskit/button": "^16.5.5",
-    "@atlaskit/css-reset": "^6.5.3",
-    "@atlaskit/dropdown-menu": "^11.6.5",
-    "@atlaskit/form": "^8.7.0",
-    "@atlaskit/icon": "^21.11.6",
-    "@atlaskit/modal-dialog": "^12.4.5",
-    "@atlaskit/progress-bar": "^0.5.4",
-    "@atlaskit/radio": "^5.5.0",
-    "@atlaskit/select": "^16.1.0",
-    "@atlaskit/spinner": "^15.3.0",
-    "@atlaskit/table": "^0.10.0",
-    "@atlaskit/tabs": "^13.3.5",
-    "@atlaskit/tag": "^11.4.5",
-    "@atlaskit/theme": "^12.4.2",
-    "@atlaskit/toggle": "^12.6.0",
     "@forge/bridge": "^4.3.0",
     "react": "^16.13.1",
     "react-dom": "^16.13.1",
-    "react-scripts": "^5.0.1",
-    "styled-components": "^5.3.10"
+    "react-scripts": "^5.0.1"
   },
   "browserslist": {
     "production": [

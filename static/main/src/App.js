@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { invoke } from '@forge/bridge';
 import '@atlaskit/css-reset';
-import styled from 'styled-components';
+// Importando componentes Atlaskit individualmente com um alias para evitar conflitos de CSP
 import Button from '@atlaskit/button';
-import Tabs, { Tab, TabList, TabPanel } from '@atlaskit/tabs';
+import { Tabs, Tab, TabList, TabPanel } from '@atlaskit/tabs';
 import Select from '@atlaskit/select';
 import Tag from '@atlaskit/tag';
 import Spinner from '@atlaskit/spinner';
 import ProgressBar from '@atlaskit/progress-bar';
-import WarningIcon from '@atlaskit/icon/glyph/warning';
-import CheckCircleIcon from '@atlaskit/icon/glyph/check-circle';
-import ErrorIcon from '@atlaskit/icon/glyph/error';
-import InfoIcon from '@atlaskit/icon/glyph/info';
+// Usando as importações de ícones como um ícone único para evitar problemas de CSP
+import { WarningIcon, CheckCircleIcon, ErrorIcon, InfoIcon } from '@atlaskit/icon';
+// Usando CSS em arquivo separado em vez de styled-components
+import './styles.css';
 
 const Container = styled.div`
   padding: 20px;

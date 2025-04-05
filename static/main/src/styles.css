@@ -1,0 +1,103 @@
+.container {
+  padding: 20px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.header {
+  margin-bottom: 20px;
+  border-bottom: 1px solid #dfe1e6;
+  padding-bottom: 15px;
+}
+
+.title {
+  font-size: 24px;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.description {
+  color: #6b778c;
+  margin-bottom: 15px;
+}
+
+.select-wrapper {
+  margin-bottom: 15px;
+}
+
+.select-label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.button-group {
+  margin-top: 20px;
+  display: flex;
+  gap: 10px;
+}
+
+.info-panel {
+  background-color: #DEEBFF;
+  border-radius: 3px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: flex-start;
+}
+
+.info-panel.error {
+  background-color: #FFEBE6;
+}
+
+.info-panel.warning {
+  background-color: #FFFAE6;
+}
+
+.info-panel.success {
+  background-color: #E3FCEF;
+}
+
+.info-content {
+  margin-left: 12px;
+}
+
+.info-title {
+  margin: 0 0 4px;
+  font-weight: 500;
+}
+
+.info-message {
+  margin: 0;
+  color: #344563;
+}
+
+.migration-history-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 16px;
+}
+
+.table-header {
+  text-align: left;
+  padding: 8px 12px;
+  border-bottom: 2px solid #DFE1E6;
+  font-weight: 500;
+}
+
+.table-cell {
+  padding: 8px 12px;
+  border-bottom: 1px solid #DFE1E6;
+}
+
+.loading-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 50px;
+}
+
+.flex-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

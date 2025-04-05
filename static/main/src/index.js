@@ -1,10 +1,11 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
-import App from './App';
+import SimplifiedApp from './SimplifiedApp';
 
+// Começamos com um aplicativo simplificado para diagnósticos
 ReactDOM.render(
   <React.StrictMode>
-    <App />
+    <SimplifiedApp />
   </React.StrictMode>,
   document.getElementById('root')
 );
