@@ -1,0 +1,47 @@
+modules:
+  jira:adminPage:
+    - key: custom-field-consolidator-admin
+      resource: main
+      resolver:
+        function: resolver
+      title: Custom Field Consolidator
+      description: Consolidate two custom fields by transferring all configurations
+        and values from one to another
+      useAsConfig: true
+  function:
+    - key: resolver
+      handler: index.handler
+resources:
+  - key: main
+    path: static/main/build
+permissions:
+  scopes:
+    - storage:app
+    - read:jira-work
+    - write:jira-work
+    - manage:jira-project
+    - read:field:jira
+    - read:issue-details:jira
+    - read:avatar:jira
+    - read:user:jira
+    - read:issue-meta:jira
+app:
+  id: ari:cloud:ecosystem::app/d3febc4b-3686-41ce-8c2b-c7e21fb95e05
+  runtime:
+    name: nodejs20.x
+  storage:
+    entities:
+      - name: migration
+        attributes:
+          sourceFieldId:
+            type: string
+          targetFieldId:
+            type: string
+          status:
+            type: string
+          migrationDate:
+            type: string
+          issueMigrationProgress:
+            type: integer
+          totalIssues:
+            type: integer
