@@ -559,8 +559,10 @@ function App() {
   }, [sourceField, targetField]);
 
   useEffect(() => {
-    if (migration && migration.status === 'IN_PROGRESS') {
-      const interval = setInterval(checkMigrationStatus, 2000);
+    if (migration && (migration.status === 'IN_PROGRESS' || 
+        (migration.screens && migration.screens.processed < migration.screens.total))) {
+      // Set a more frequent polling interval to get screen migration updates
+      const interval = setInterval(checkMigrationStatus, 1000);
       return () => clearInterval(interval);
     }
   }, [migration]);
@@ -1037,8 +1039,54 @@ function App() {
               <p>Started: {formatDate(migration.migrationDate)}</p>
               <p>Status: {migration.status}</p>
               
+              {/* Screen Migration Progress */}
+              {migration.screens && (
+                <div style={{marginBottom: '20px', padding: '10px', borderRadius: '5px', backgroundColor: '#f4f5f7'}}>
+                  <h4>Screen Migration Progress</h4>
+                  <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '10px'}}>
+                    <div>
+                      <span style={{fontWeight: 'bold'}}>Total screens:</span> {migration.screens.total || 0}
+                    </div>
+                    <div>
+                      <span style={{fontWeight: 'bold'}}>Processed:</span> {migration.screens.processed || 0}
+                    </div>
+                    <div>
+                      <span style={{fontWeight: 'bold', color: '#00875A'}}>Succeeded:</span> {migration.screens.succeeded || 0}
+                    </div>
+                    <div>
+                      <span style={{fontWeight: 'bold', color: '#DE350B'}}>Failed:</span> {migration.screens.failed || 0}
+                    </div>
+                  </div>
+                  
+                  {migration.screens.processed > 0 && migration.screens.total > 0 && (
+                    <div style={styles.progressBar}>
+                      <div 
+                        style={{
+                          ...styles.progressFill, 
+                          width: `${(migration.screens.processed / migration.screens.total) * 100}%`
+                        }} 
+                      />
+                    </div>
+                  )}
+                  
+                  {/* Screen transfer logs */}
+                  {migration.screens.logs && migration.screens.logs.length > 0 && (
+                    <div style={{maxHeight: '200px', overflowY: 'auto', marginTop: '10px', padding: '8px', backgroundColor: '#fff', border: '1px solid #dfe1e6', borderRadius: '3px'}}>
+                      <h5 style={{margin: '0 0 8px 0'}}>Screen Transfer Logs:</h5>
+                      {migration.screens.logs.map((log, index) => (
+                        <div key={index} style={{padding: '4px 0', borderBottom: '1px solid #f4f5f7'}}>
+                          {log}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              {/* Issue Migration Progress */}
               {migration.status === 'IN_PROGRESS' && (
                 <>
+                  <h4>Issue Migration Progress</h4>
                   <p>Migrating issue values: {migration.issueMigrationProgress} of {migration.totalIssues}</p>
                   <div style={styles.progressBar}>
                     <div 
@@ -1049,6 +1097,18 @@ function App() {
                     />
                   </div>
                 </>
+              )}
+              
+              {/* Additional transfer logs */}
+              {migration.transferLogs && migration.transferLogs.length > 0 && (
+                <div style={{maxHeight: '200px', overflowY: 'auto', marginTop: '20px', padding: '8px', backgroundColor: '#f4f5f7', border: '1px solid #dfe1e6', borderRadius: '3px'}}>
+                  <h4 style={{margin: '0 0 8px 0'}}>Transfer Details:</h4>
+                  {migration.transferLogs.map((log, index) => (
+                    <div key={index} style={{padding: '4px 0', borderBottom: '1px solid #dfe1e6', backgroundColor: log.includes('✅') ? '#E3FCEF' : (log.includes('❌') ? '#FFEBE6' : 'transparent')}}>
+                      {log}
+                    </div>
+                  ))}
+                </div>
               )}
               
               {migration.status === 'ERROR' && migration.error && (
