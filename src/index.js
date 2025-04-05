@@ -67,6 +67,38 @@ const conversionRules = {
   }
 };
 
+// Function to extract screens array from API response with safeguards
+function extractScreensArray(apiResponse) {
+  try {
+    // Handle different possible API response formats
+    if (Array.isArray(apiResponse)) {
+      console.log('API response is directly an array');
+      return apiResponse;
+    } else if (apiResponse && apiResponse.screens && Array.isArray(apiResponse.screens)) {
+      console.log('API response has screens property as array');
+      return apiResponse.screens;
+    } else if (apiResponse && apiResponse.values && Array.isArray(apiResponse.values)) {
+      console.log('API response has values property as array');
+      return apiResponse.values;
+    } else if (apiResponse && typeof apiResponse === 'object') {
+      // Try to find the first array property in the response
+      for (const key in apiResponse) {
+        if (Array.isArray(apiResponse[key])) {
+          console.log(`Found array in property '${key}'`);  
+          return apiResponse[key];
+        }
+      }
+    }
+    
+    // If all else fails, return empty array
+    console.log('Could not find any array data in API response');
+    return [];
+  } catch (error) {
+    console.error('Error in extractScreensArray:', error);
+    return [];
+  }
+}
+
 // Function to get all custom fields
 resolver.define('getCustomFields', async (req) => {
   try {
@@ -93,18 +125,32 @@ resolver.define('getFieldConfigurations', async (req) => {
   const { sourceFieldId } = req.payload;
   
   try {
+    console.log(`Getting field configurations for field: ${sourceFieldId}`);
+    
     // Get screens where the field is used
     const screensResponse = await api.asApp().requestJira(route`/rest/api/3/field/${sourceFieldId}/screens`);
     const screens = await screensResponse.json();
+    console.log('Screens API response:', JSON.stringify(screens));
     
     // Get issue types where the field is used
     const contextResponse = await api.asApp().requestJira(route`/rest/api/3/field/${sourceFieldId}/contexts`);
     const contexts = await contextResponse.json();
+    console.log('Contexts API response:', JSON.stringify(contexts));
     
-    return {
-      screens: screens.screens || [],
-      contexts: contexts.values || []
+    // Use our helper function to extract screen and context arrays
+    const screensArray = extractScreensArray(screens);
+    const contextsArray = extractScreensArray(contexts);
+    
+    const result = {
+      screens: screensArray,
+      contexts: contextsArray
     };
+    
+    console.log('Field configurations return data:');
+    console.log('- Screens count:', screensArray.length);
+    console.log('- Contexts count:', contextsArray.length);
+    
+    return result;
   } catch (error) {
     console.error('Error fetching field configurations:', error);
     return { error: error.message };
@@ -130,12 +176,24 @@ resolver.define('analyzeFields', async (req) => {
     }
     
     // Get source field screens
+    console.log(`Fetching screens for source field: ${sourceFieldId}`);
     const sourceScreensResponse = await api.asApp().requestJira(route`/rest/api/3/field/${sourceFieldId}/screens`);
+    // Add status code debugging
+    console.log('Source screens response status:', sourceScreensResponse.status);
     const sourceScreens = await sourceScreensResponse.json();
+    console.log('Source screens API response:', JSON.stringify(sourceScreens));
     
     // Get target field screens
+    console.log(`Fetching screens for target field: ${targetFieldId}`);
     const targetScreensResponse = await api.asApp().requestJira(route`/rest/api/3/field/${targetFieldId}/screens`);
+    // Add status code debugging
+    console.log('Target screens response status:', targetScreensResponse.status);
     const targetScreens = await targetScreensResponse.json();
+    console.log('Target screens API response:', JSON.stringify(targetScreens));
+    
+    // Add API headers for debugging
+    console.log('Response headers for source screens:', JSON.stringify(Object.fromEntries(sourceScreensResponse.headers.entries())));
+    console.log('Response headers for target screens:', JSON.stringify(Object.fromEntries(targetScreensResponse.headers.entries())));
     
     // Get source field contexts
     const sourceContextsResponse = await api.asApp().requestJira(route`/rest/api/3/field/${sourceFieldId}/contexts`);
@@ -248,17 +306,47 @@ resolver.define('analyzeFields', async (req) => {
     // Perform validation checks
     const validationResults = validateFieldConversion(sourceType, targetType, sourceCustomType, targetCustomType);
 
-    return {
+    // Process screen data using the helper function to extract screen arrays with proper error handling
+    console.log('Extracting screens data from API responses...');
+    const sourceScreensData = extractScreensArray(sourceScreens);
+    const targetScreensData = extractScreensArray(targetScreens);
+    const sourceContextsData = extractScreensArray(sourceContexts);
+    const targetContextsData = extractScreensArray(targetContexts);
+    
+    console.log(`Source field screens count: ${sourceScreensData.length}`);
+    console.log(`Target field screens count: ${targetScreensData.length}`);
+    
+    // Check API response structure for debugging
+    console.log('Source screens type:', typeof sourceScreens);
+    if (typeof sourceScreens === 'object' && sourceScreens !== null) {
+      console.log('Source screens keys:', Object.keys(sourceScreens));
+    }
+    
+    console.log('Target screens type:', typeof targetScreens);
+    if (typeof targetScreens === 'object' && targetScreens !== null) {
+      console.log('Target screens keys:', Object.keys(targetScreens));
+    }
+    
+    // Log first item from each array for structure analysis
+    if (sourceScreensData.length > 0) {
+      console.log('Sample source screen item:', JSON.stringify(sourceScreensData[0]));
+    }
+    
+    if (targetScreensData.length > 0) {
+      console.log('Sample target screen item:', JSON.stringify(targetScreensData[0]));
+    }
+    
+    const result = {
       sourceField: {
         id: sourceFieldId,
         name: sourceField.name,
         type: sourceType,
         customType: sourceCustomType,
         valueCount: sourceValuesResult.total || 0,
-        screens: sourceScreens.screens || [],
-        screenCount: (sourceScreens.screens || []).length,
-        contexts: sourceContexts.values || [],
-        contextCount: (sourceContexts.values || []).length,
+        screens: sourceScreensData,
+        screenCount: sourceScreensData.length,
+        contexts: sourceContextsData,
+        contextCount: sourceContextsData.length,
         projects: Object.values(sourceProjects),
         projectCount: Object.keys(sourceProjects).length,
         hasMoreProjects: sourceValuesResult.total > 100
@@ -269,16 +357,23 @@ resolver.define('analyzeFields', async (req) => {
         type: targetType,
         customType: targetCustomType,
         valueCount: targetValuesResult.total || 0,
-        screens: targetScreens.screens || [],
-        screenCount: (targetScreens.screens || []).length,
-        contexts: targetContexts.values || [],
-        contextCount: (targetContexts.values || []).length,
+        screens: targetScreensData,
+        screenCount: targetScreensData.length,
+        contexts: targetContextsData,
+        contextCount: targetContextsData.length,
         projects: Object.values(targetProjects),
         projectCount: Object.keys(targetProjects).length,
         hasMoreProjects: targetValuesResult.total > 100
       },
       validation: validationResults
     };
+    
+    console.log('Final analysis result structure:', JSON.stringify({
+      sourceFieldScreenCount: result.sourceField.screenCount,
+      targetFieldScreenCount: result.targetField.screenCount
+    }));
+    
+    return result;
   } catch (error) {
     console.error('Error analyzing fields:', error);
     return { error: error.message };
@@ -456,9 +551,10 @@ async function migrateFieldConfigurations(sourceFieldId, targetFieldId, migratio
     // 1. Get all screens where source field is used
     const screensResponse = await api.asApp().requestJira(route`/rest/api/3/field/${sourceFieldId}/screens`);
     const screens = await screensResponse.json();
+    const screensArray = extractScreensArray(screens);
     
     // 2. Add target field to those screens
-    for (const screen of screens.screens || []) {
+    for (const screen of screensArray) {
       try {
         await api.asApp().requestJira(route`/rest/api/3/screens/${screen.id}/availableFields`, {
           method: 'GET'

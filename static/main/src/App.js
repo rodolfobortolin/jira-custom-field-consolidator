@@ -576,6 +576,8 @@ function App() {
       });
       
       console.log('Field details received:', details);
+      console.log('Screens array:', details.screens);
+      console.log('Screens count:', details.screens ? details.screens.length : 'No screens array');
       
       if (details.error) {
         setError(details.error);
@@ -602,6 +604,12 @@ function App() {
       });
       
       console.log('Analysis results:', results);
+      
+      // Debug screen data
+      console.log('Source field screens:', results.sourceField?.screens);
+      console.log('Source field screen count:', results.sourceField?.screenCount);
+      console.log('Target field screens:', results.targetField?.screens);
+      console.log('Target field screen count:', results.targetField?.screenCount);
       
       if (results.error) {
         setError(results.error);
@@ -997,17 +1005,24 @@ function App() {
               <h3>Field Usage Summary</h3>
               <p>The source field is used in:</p>
               <ul>
-                <li>{configDetails.screens.length} screen(s)</li>
-                <li>{configDetails.contexts.length} context(s)</li>
+                <li>Screens: {Array.isArray(configDetails.screens) ? configDetails.screens.length : 'Unknown'}</li>
+                <li>Contexts: {Array.isArray(configDetails.contexts) ? configDetails.contexts.length : 'Unknown'}</li>
               </ul>
               
-              {configDetails.screens.length > 0 && (
+              {/* Debug information */}
+              <div style={{background: '#f0f0f0', padding: '10px', marginBottom: '10px', borderRadius: '3px'}}>
+                <h4>Debug Info:</h4>
+                <p>configDetails.screens is array: {Array.isArray(configDetails.screens) ? 'Yes' : 'No'}</p>
+                <p>Raw screens data: {JSON.stringify(configDetails.screens)}</p>
+              </div>
+              
+              {Array.isArray(configDetails.screens) && configDetails.screens.length > 0 && (
                 <div>
                   <h4>Screens:</h4>
                   <div style={styles.flexRow}>
-                    {configDetails.screens.map(screen => (
-                      <div key={screen.id} style={styles.tag}>
-                        {screen.name}
+                    {configDetails.screens.map((screen, index) => (
+                      <div key={screen.id || index} style={styles.tag}>
+                        {screen.name || JSON.stringify(screen)}
                       </div>
                     ))}
                   </div>
@@ -1143,15 +1158,23 @@ function App() {
                     </button>
                   </div>
                   
-                  {showSourceScreens && analysisResults.sourceField.screens.length > 0 && (
+                  {showSourceScreens && Array.isArray(analysisResults.sourceField.screens) && analysisResults.sourceField.screens.length > 0 && (
                     <div style={styles.screenList}>
-                      {analysisResults.sourceField.screens.map(screen => (
-                        <div key={screen.id} style={styles.screenItem}>
-                          {screen.name}
+                      {analysisResults.sourceField.screens.map((screen, index) => (
+                        <div key={screen.id || `source-screen-${index}`} style={styles.screenItem}>
+                          {screen.name || (typeof screen === 'object' ? JSON.stringify(screen) : screen.toString())}
                         </div>
                       ))}
                     </div>
                   )}
+                  
+                  {/* Debug info */}
+                  <div style={{background: '#f0f0f0', padding: '5px', marginBottom: '10px', borderRadius: '3px', fontSize: '12px'}}>
+                    <p>Debug: sourceField.screens is {Array.isArray(analysisResults.sourceField.screens) ? 'an array' : 'not an array'}</p>
+                    {!Array.isArray(analysisResults.sourceField.screens) && (
+                      <p>Type: {typeof analysisResults.sourceField.screens}</p>
+                    )}
+                  </div>
                   
                   <div style={{marginBottom: '12px', fontWeight: '600', color: '#0052CC'}}>
                     Contexts: {analysisResults.sourceField.contextCount}
@@ -1199,15 +1222,23 @@ function App() {
                     </button>
                   </div>
                   
-                  {showTargetScreens && analysisResults.targetField.screens.length > 0 && (
+                  {showTargetScreens && Array.isArray(analysisResults.targetField.screens) && analysisResults.targetField.screens.length > 0 && (
                     <div style={styles.screenList}>
-                      {analysisResults.targetField.screens.map(screen => (
-                        <div key={screen.id} style={styles.screenItem}>
-                          {screen.name}
+                      {analysisResults.targetField.screens.map((screen, index) => (
+                        <div key={screen.id || `target-screen-${index}`} style={styles.screenItem}>
+                          {screen.name || (typeof screen === 'object' ? JSON.stringify(screen) : screen.toString())}
                         </div>
                       ))}
                     </div>
                   )}
+                  
+                  {/* Debug info */}
+                  <div style={{background: '#f0f0f0', padding: '5px', marginBottom: '10px', borderRadius: '3px', fontSize: '12px'}}>
+                    <p>Debug: targetField.screens is {Array.isArray(analysisResults.targetField.screens) ? 'an array' : 'not an array'}</p>
+                    {!Array.isArray(analysisResults.targetField.screens) && (
+                      <p>Type: {typeof analysisResults.targetField.screens}</p>
+                    )}
+                  </div>
                   
                   <div style={{marginBottom: '12px', fontWeight: '600', color: '#0052CC'}}>
                     Contexts: {analysisResults.targetField.contextCount}
