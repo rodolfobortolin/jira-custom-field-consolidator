@@ -5,9 +5,10 @@ modules:
       resolver:
         function: resolver
       title: Custom Field Consolidator
-      description: Consolidate two custom fields by transferring all configurations
-        and values from one to another
-      useAsConfig: true
+      description: Consolidate two custom fields by transferring all configurations and values from one to another
+      useAsConfig: false  # Alterado para false para não usar como página de configuração
+      location: admin_plugins_menu  # Adiciona o app ao menu de plugins de administração
+      category: admin_plugins # Categoria para menu de administração
   function:
     - key: resolver
       handler: index.handler
